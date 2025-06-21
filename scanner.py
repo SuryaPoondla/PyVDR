@@ -11,7 +11,6 @@ import safety #To rank the vulnerabilities
 import bandit #To rank the vulnerabilities
 import subprocess
 
-
 file_path = "requirements.txt"
 def parse_requirements(file_path):
     requirements = {}
@@ -55,8 +54,8 @@ def query_nvd(package_name, version):
         return []
 
 
-def query_osv(package_name, version):
-    """Search OSV for vulnerabilities related to a package and refine missing details."""
+def query_osv_backup_v2(package_name, version):
+    """Search OSV for vulnerabilities related to a package and summarize essential details."""
     
     url = "https://api.osv.dev/v1/query"
     payload = {"package": {"name": package_name, "ecosystem": "PyPI"}, "version": version}
@@ -64,128 +63,110 @@ def query_osv(package_name, version):
     try:
         response = requests.post(url, json=payload)
         data = response.json()
-        results = []
         
+        vuln_ids = []
+        severities = []
+        max_severity = "UNKNOWN"
+        exploitability_scores = []
+
         if "vulns" in data:
             for vuln in data["vulns"]:
-                severity = "UNKNOWN"
+                vuln_ids.append(vuln["id"])
                 
-                # Extract severity from CVSS vector if available
+                severity = "UNKNOWN"
+                exploitability = None
+                
+                
                 if "severity" in vuln and vuln["severity"]:
                     severity_info = vuln["severity"]
                     if isinstance(severity_info, list):
-                        severity = next((s["score"] for s in severity_info if "score" in s), "UNKNOWN")
+                        severity_scores = [s["score"] for s in severity_info if "score" in s]
+                        max_severity = max(severity_scores, default="UNKNOWN")  # Get highest score
+                        severities = severity_scores
                 
-                # Ensure affected package name is correct
-                affected_package = vuln.get("package_name", package_name)
+                # Extract exploitability score if available
+                if "cvss" in vuln and vuln["cvss"]:
+                    cvss_info = vuln["cvss"]
+                    if isinstance(cvss_info, list):
+                        exploitability = next((cvss.get("exploitabilityScore") for cvss in cvss_info if "exploitabilityScore" in cvss), None)
+                        if exploitability:
+                            exploitability_scores.append(exploitability)
                 
-                # Normalize affected versions
-                affected_versions = vuln.get("affected_versions", [version])
+                if severity != "UNKNOWN" and (max_severity == "UNKNOWN" or severity > max_severity):
+                    max_severity = severity
                 
-                results.append({
-                    "id": vuln["id"],
-                    "severity": severity,
-                    "affected_package": affected_package,
-                    "affected_versions": affected_versions,
-                    "references": vuln.get("references", []),
-                    "description": vuln.get("details", "OSV description unavailable")
-                })
             
-        return results
+        return {
+            "vuln_ids": vuln_ids,
+            "max_severity": max_severity,
+            "severities": severities, #Aux info
+            "exploitability_scores": exploitability_scores
+        }
     except Exception as e:
         print(f"Error querying OSV for {package_name}=={version}: {e}")
-        return []
+        return {}
 
-def query_osv_v3(package_name, version):
-    """
-    Query OSV for vulnerabilities for a given PyPI package and version.
-    Returns a list of vulnerability dictionaries.
-    """
-    url = "https://api.osv.dev/v1/query"
-    payload = {
-        "package": {
-            "name": package_name,
-            "ecosystem": "PyPI"
-        },
-        "version": version
-    }
-
+def get_package_download_count(package_name):
+    url = f"https://pypistats.org/api/packages/{package_name}/recent"
     try:
-        response = requests.post(url, json=payload, timeout=10)
-        response.raise_for_status()
+        response = requests.get(url)
         data = response.json()
-        results = []
-
-        if "vulns" in data:
-            for vuln in data["vulns"]:
-                # Parse severity
-                severity = "UNKNOWN"
-                if "severity" in vuln:
-                    for s in vuln["severity"]:
-                        if s.get("type") == "CVSS_V3" and "score" in s:
-                            severity = s["score"]
-                            break
-
-                # Parse affected versions
-                affected_versions = []
-                for affected in vuln.get("affected", []):
-                    ranges = affected.get("ranges", [])
-                    for r in ranges:
-                        if r.get("type") == "ECOSYSTEM":
-                            for event in r.get("events", []):
-                                if "introduced" in event or "fixed" in event:
-                                    affected_versions.append(event)
-
-                results.append({
-                    "id": vuln.get("id", "N/A"),
-                    "severity": severity,
-                    "affected_package": package_name,
-                    "affected_versions": affected_versions,
-                    "references": vuln.get("references", []),
-                    "description": vuln.get("details", "OSV description unavailable")
-                })
-
-        return results
-
-    except requests.RequestException as e:
-        print(f"[OSV] Network error for {package_name}=={version}: {e}")
-        return []
-    except ValueError as e:
-        print(f"[OSV] JSON decode error for {package_name}=={version}: {e}")
-        return []
+        return data["data"]["last_month"]
     except Exception as e:
-        print(f"[OSV] Unexpected error for {package_name}=={version}: {e}")
-        return []
+        return f"Download lookup failed: {e}"
 
-
-def query_osv_original(package_name, version):    
-    # print("BBBEntered query_osv")
-    """Search OSV for vulnerabilities related to a package."""
-    # spoondla6 Working
-    # Output: osv query example
-    # Result[0]: {'id': 'GHSA-fpfv-jqm9-f5jm', 'severity': [{'type': 'CVSS_V3', 'score': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L'}], 'details': 'Incomplete string comparison in the numpy.core component in NumPy1.9.x, which allows attackers to fail the APIs via constructing specific string objects.'}
+def query_osv(package_name, version):
+    """Search OSV for vulnerabilities related to a package and summarize essential details."""
     
-    url = f"https://api.osv.dev/v1/query"
+    url = "https://api.osv.dev/v1/query"
     payload = {"package": {"name": package_name, "ecosystem": "PyPI"}, "version": version}
+
     try:
         response = requests.post(url, json=payload)
         data = response.json()
-        results = []
+        
+        vuln_ids = []
+        cve_ids = []
+        severities = []
+        max_severity = "UNKNOWN"
+        package_download_count = 0
+        exploitability_scores = []
+
         if "vulns" in data:
             for vuln in data["vulns"]:
-                severity = vuln.get("severity", "UNKNOWN")
-                results.append({
-                    "id": vuln["id"],
-                    "severity": severity,
-                    "details": vuln.get("details", "No details available")
-                })
-            
-            # for i in range(len(results)):
-            #     print(f"OSV Result[{i}]: {results[i]}")
-        return results
+                vuln_ids.append(vuln.get("id", "UNKNOWN"))
+
+                # Extract CVEs from aliases
+                aliases = vuln.get("aliases", [])
+                cve_list = [a for a in aliases if a.startswith("CVE-")]
+                cve_ids.extend(cve_list)
+
+                # Extract severity scores
+                severity_info = vuln.get("severity", [])
+                severity_scores = [s["score"] for s in severity_info if "score" in s]
+                if severity_scores:
+                    severities.extend(severity_scores)
+                    max_severity = max(severities, default=max_severity)
+
+                # Extract exploitability scores (if any)
+                for cvss in vuln.get("cvss", []):
+                    if "exploitabilityScore" in cvss:
+                        exploitability_scores.append(cvss["exploitabilityScore"])
+        
+        package_download_count = get_package_download_count(package_name)
+        
+        return {
+            "vuln_ids": vuln_ids,
+            "cve_ids": cve_ids,
+            "max_severity": max_severity,
+            "severities": severities,
+            "package_download_count": package_download_count,
+            "exploitability_scores": exploitability_scores
+        }
+
     except Exception as e:
-        print(f"Error querying OSV: {e}")
-        return []
+        print(f"Error querying OSV for {package_name}=={version}: {e}")
+        return {}
 
 
 def pip_audit_queries():
@@ -232,11 +213,7 @@ def main():
     print("Hello World")
     parsed_requirements = parse_requirements(file_path)
     nvd_vulnerabilities = []
-    osv_vulnerabilities = []
-    
-    # print("osv query example")
-    # Example
-    # query_osv("numpy", "1.21.0")
+    osv_vulnerabilities = {}
     
     print("parsed the requirements.txt")
     print(parsed_requirements)
@@ -244,21 +221,20 @@ def main():
     for package, version in parsed_requirements.items():
         print(f"{package}: {version}")
         print("Querying the nvd database")
-        nvd_vulnerabilities_raw = query_nvd(package, version)
+        # spoondla6 temporary comment
+        # nvd_vulnerabilities_raw = query_nvd(package, version)
         
-        for vuln in nvd_vulnerabilities_raw:
-            nvd_vulnerabilities.append({
-                "package": package,
-                "version": version,
-                "cve_id": vuln["cve_id"],
-                "severity": vuln["severity"],
-                "source": vuln["source"]
-            })
+        # for vuln in nvd_vulnerabilities_raw:
+        #     nvd_vulnerabilities.append({
+        #         "package": package,
+        #         "version": version,
+        #         "cve_id": vuln["cve_id"],
+        #         "severity": vuln["severity"],
+        #         "source": vuln["source"]
+        #     })
             
-        # osv_vulnerabilities_raw = query_osv(package, version) #Working, fix syntax
-        osv_vulnerabilities_raw = query_osv_v3(package, version)
-        for vuln in osv_vulnerabilities_raw:
-            osv_vulnerabilities.append(vuln);
+        osv_vulnerabilities[f"{package}=={version}"] = query_osv(package, version)
+        
     
     print(f"printing the len of NVD, {len(nvd_vulnerabilities)}, len of OSV, {len(osv_vulnerabilities)}")
     
@@ -291,12 +267,13 @@ def main():
     for vuln in nvd_vulnerabilities:
         print(vuln)
     
-    print(f"Printing the osv_vulnerabilities, its len is {len(osv_vulnerabilities)}")
-    for vuln in osv_vulnerabilities:
-        print(vuln)
+    print(f"Printing the keys and contents of osv_vulnerabilities, its len is {len(osv_vulnerabilities)}")
+    for package_version, vuln_data in osv_vulnerabilities.items():
+        print(f"{package_version}: {vuln_data}")  # Prints each package version along with its details
+        print("\n")
         
-    unified_vulnerabilities = unify_vulnerability_data(nvd_vulnerabilities, osv_vulnerabilities)
-    print(f"Printing the unified_vulnerabilities, its len is {len(unified_vulnerabilities)}")
+    # unified_vulnerabilities = unify_vulnerability_data(nvd_vulnerabilities, osv_vulnerabilities) #Fix synatx issues
+    # print(f"Printing the unified_vulnerabilities, its len is {len(unified_vulnerabilities)}")
     # for vuln in unified_vulnerabilities:
     #     print(vuln)
     
