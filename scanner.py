@@ -283,7 +283,7 @@ def rank_by_cvss_severity_and_download_count(packages):
         max_exploit = max(exploit_scores) if exploit_scores else 0
         print(f"downloads={downloads}, avg_exploit={avg_exploit}, max_exploit={max_exploit}")
 
-        # Heavier weight on real-world usage
+        # Assigning more weight for real-world scenarios
         risk_score = (
             avg_score * 0.2 +
             max_score * 0.5 +
@@ -359,6 +359,40 @@ def print_ranking_engine_csvv_downloads(results):
     for pkg, risk, cves, avg_cvss, max_cvss, downloads, avg_expl, max_expl in results:
         print(f"{pkg:<20} {risk:<12.2f} {cves:<16} {avg_cvss:<12.2f} {max_cvss:<12.2f} {downloads:<16.1f} {avg_expl:<14.2f} {max_expl:<14.2f}")
 
+def process_and_save_ranking_engine1(ranking_engine1):
+    ranking_engine_1_dicts = [
+    {
+        "package": pkg,
+        "risk_score": score,
+        "cvss_count": cve_count,
+        "avg_cvss": avg_cvss,
+        "max_cvss": max_cvss
+    }
+    for pkg, score, cve_count, avg_cvss, max_cvss in ranking_engine1
+    ]
+    
+    with open("ranking_engine_1.json", "w") as f1:
+        json.dump(ranking_engine_1_dicts, f1, indent=4)
+
+
+def process_and_save_ranking_engine2(ranking_engine2):
+    
+    ranking_engine_2_dicts = [
+    {
+        "package": pkg,
+        "risk_score": score,
+        "cvss_count": cve_count,
+        "avg_cvss": avg_cvss,
+        "max_cvss": max_cvss,
+        "downloads": downloads,
+        "avg_exploit": avg_exploit,
+        "max_exploit": max_exploit
+    }
+    for pkg, score, cve_count, avg_cvss, max_cvss, downloads, avg_exploit, max_exploit in ranking_engine2
+    ]
+    
+    with open("ranking_engine_2.json", "w") as f2:
+        json.dump(ranking_engine_2_dicts, f2, indent=4)
 
 def main():
     print("Hello World")
@@ -439,6 +473,12 @@ def main():
     ranking_engine2 = rank_by_cvss_severity_and_download_count(osv_vulnerabilities)
     print(ranking_engine2)
     print_ranking_engine_csvv_downloads(ranking_engine2)
+    
+    print("Creaing the json formats for ranking engine 1 and ranking engine 2")
+    process_and_save_ranking_engine1(ranking_engine1)
+    process_and_save_ranking_engine2(ranking_engine2)
+    
+    
     # unified_vulnerabilities = unify_vulnerability_data(nvd_vulnerabilities, osv_vulnerabilities) #Fix synatx issues
     # print(f"Printing the unified_vulnerabilities, its len is {len(unified_vulnerabilities)}")
     # for vuln in unified_vulnerabilities:
