@@ -1,0 +1,52 @@
+[
+    {
+        "package": "urllib3==1.23",
+        "risk_score": 174.2,
+        "cvss_count": 9,
+        "avg_cvss": 6.1,
+        "max_cvss": 8.7,
+        "downloads": 838.7,
+        "avg_exploit": 2.23,
+        "max_exploit": 3.89
+    },
+    {
+        "package": "requests==2.19.1",
+        "risk_score": 152.55,
+        "cvss_count": 4,
+        "avg_cvss": 6.12,
+        "max_cvss": 7.5,
+        "downloads": 735.9,
+        "avg_exploit": 1.86,
+        "max_exploit": 3.89
+    },
+    {
+        "package": "pillow==6.2.0",
+        "risk_score": 43.49,
+        "cvss_count": 39,
+        "avg_cvss": 7.99,
+        "max_cvss": 9.8,
+        "downloads": 165.5,
+        "avg_exploit": 3.21,
+        "max_exploit": 3.89
+    },
+    {
+        "package": "flask==0.12.2",
+        "risk_score": 29.22,
+        "cvss_count": 3,
+        "avg_cvss": 8.1,
+        "max_cvss": 8.7,
+        "downloads": 114.7,
+        "avg_exploit": 3.89,
+        "max_exploit": 3.89
+    },
+    {
+        "package": "django==2.1.5",
+        "risk_score": 13.45,
+        "cvss_count": 15,
+        "avg_cvss": 7.41,
+        "max_cvss": 9.8,
+        "downloads": 27.8,
+        "avg_exploit": 3.28,
+        "max_exploit": 3.89
+    }
+]

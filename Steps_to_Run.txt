@@ -1,0 +1,11 @@
+steps to run/deploy:
+Put all the files (scanner.py, test_UI.py, requirements.txt) in 1 folder
+Have python version 3.13.4
+1) run scanner.py (python scanner.py)
+	=> The detection engine, ranking engine 1 and ranking engine 2 output is displayed on the terminal (stdout)
+	=> ranking_engine_1.json, ranking_engine_2.json files are generated this is based on the output of the ranking engine 1, ranking engine 2 that we just saw on the stdout from the previous step. These jsons will be used in the UI in the next step, these files can also be renamed and used for offline data analytics
+2) run test_UI.py (python test_UI.py)
+	=> Uses ranking_engine_1.json, ranking_engine_2.json and creates interactive UI
+	=> See the output on stdout it usually looks like (Dash is running on http://127.0.0.1:8050/), paste that url onto a web browser to get the interactive UI
+
+Note: We can test the PyVDR using various other requirements.txt to detect vulnerabilities present in those python packages and rank them

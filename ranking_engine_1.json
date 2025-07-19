@@ -1,0 +1,37 @@
+[
+    {
+        "package": "pillow==6.2.0",
+        "risk_score": 12.36,
+        "cvss_count": 39,
+        "avg_cvss": 7.99,
+        "max_cvss": 9.8
+    },
+    {
+        "package": "django==2.1.5",
+        "risk_score": 9.84,
+        "cvss_count": 15,
+        "avg_cvss": 7.41,
+        "max_cvss": 9.8
+    },
+    {
+        "package": "urllib3==1.23",
+        "risk_score": 8.21,
+        "cvss_count": 9,
+        "avg_cvss": 6.1,
+        "max_cvss": 8.7
+    },
+    {
+        "package": "flask==0.12.2",
+        "risk_score": 8.01,
+        "cvss_count": 3,
+        "avg_cvss": 8.1,
+        "max_cvss": 8.7
+    },
+    {
+        "package": "requests==2.19.1",
+        "risk_score": 6.88,
+        "cvss_count": 4,
+        "avg_cvss": 6.12,
+        "max_cvss": 7.5
+    }
+]
