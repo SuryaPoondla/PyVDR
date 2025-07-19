@@ -4,6 +4,7 @@ import dash
 from dash import dcc, html, dash_table
 import plotly.express as px
 
+# The label cvss score function has been taken from scanner.py
 def label_cvss_score(score):
     if score == 0:
         return "None"
